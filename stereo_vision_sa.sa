@@ -1,0 +1,100 @@
+             .global stereo_vision_sa
+stereo_vision_sa      .cproc l,r,disparity_map,search_range,radius
+			 .reg   	n,o, p,q, loop_count_1, loop_count_2, loop_count_3, loop_count_4,loop_count_5, cv1,cv2,cv3,cv4,cv5, minimise, sum, distance, cond1, cond2,cond3,cond4,cond5,reg_l,reg_r
+
+			MVK		-1,o
+			MVK		280,p
+			MVK		280,n
+		    SUB 	n,radius,loop_count_2
+		    ZERO 	loop_count_3
+		    MPY 	o,radius,loop_count_4
+		    MPY 	o,radius,loop_count_5
+		    ZERO    cv2
+		    MVK     223,loop_count_1
+		    SUB 	loop_count_1,radius, loop_count_1
+		    SUB 	loop_count_1,1,loop_count_1
+
+
+
+
+loop
+			SUB 	n,radius,loop_count_2
+			SUB 	loop_count_2,1,loop_count_2
+
+;loop count okay
+
+loop2
+			ZERO distance
+		    MVKL 0x000186A0, minimise
+		    MVKH 0x000186A0, minimise
+		    ZERO loop_count_3
+
+;loop count okay
+loop3
+			ZERO    sum
+			SUB     loop_count_2, radius, cond1
+			SUB		cond1, loop_count_3, cond1
+			CMPGT   cond1, o, cond2
+[!cond2]	B		cond_loop
+	 		MPY 	o,radius,loop_count_4
+
+loop4
+	        MPY     o,radius,loop_count_5
+
+
+loop5
+	 		ADD     loop_count_1,loop_count_4,cv1
+	 		ADD     loop_count_3,loop_count_5,cv2
+	 		SUB     loop_count_2,loop_count_3,cv3
+	 		ADD     cv3,loop_count_5,cv3
+     		MPY   	cv1,n,cv4
+	 		ADD     cv4,cv2,cv2
+	 		ADD     cv4,cv3,cv3
+	 		LDBU	*l[cv2], cv1
+	 		LDBU    *r[cv3], cv2
+	 		SUB     cv1,cv2,cv4
+	 		ABS		cv4,cv4
+	 		ADD     cv4,sum,sum
+
+	 	    ADD		loop_count_5, 1, loop_count_5
+			CMPLT   loop_count_5, radius, cond5
+[!cond5]	CMPEQ	loop_count_5,radius, cond5
+[cond5]	    B       loop5
+
+	    	ADD		loop_count_4, 1, loop_count_4
+	    	CMPLT   loop_count_4, radius, cond4
+[!cond4]	CMPEQ	loop_count_4,radius, cond4
+
+	    	CMPGT   minimise, sum, cond3
+[cond3]	 	ADD     sum,0,minimise
+[cond3]	 	ADD 	loop_count_3,0,distance
+[cond4]	   	B       loop4
+
+cond_loop
+			ADD     loop_count_3, 1, loop_count_3
+			CMPLT   loop_count_3, search_range, cond4
+
+[cond4]     B       loop3
+
+
+		    MPY		loop_count_1,p,cv5
+			ADD		loop_count_2,cv5,cv5
+
+		    STB		distance, *disparity_map[cv5]
+
+			SUB     loop_count_2, 1, loop_count_2
+			CMPLT   radius,loop_count_2, cond4
+[!cond4]	CMPEQ	radius,loop_count_2, cond4
+[cond4]     B       loop2
+
+
+		    SUB		loop_count_1, 1, loop_count_1
+		    CMPLT   radius, loop_count_1, cond4
+[!cond4]	CMPEQ	radius,loop_count_1, cond4
+[cond4]     B       loop
+
+
+
+
+			 .return
+             .endproc
